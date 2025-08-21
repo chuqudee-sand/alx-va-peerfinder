@@ -1,0 +1,9 @@
+Flask
+pandas
+boto3
+psycopg2-binary
+Flask-Migrate
+Flask-Mail
+gunicorn
+python-dotenv
+dropbox
