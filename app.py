@@ -24,8 +24,8 @@ app.config.update(
     MAIL_SERVER='smtp.gmail.com',
     MAIL_PORT=587,
     MAIL_USE_TLS=True,
-    MAIL_USERNAME="aice@alxafrica.com",      # [REQUIRED]
-    MAIL_PASSWORD="rbpauzxbusqaaini",                  # [REQUIRED]
+    MAIL_USERNAME="vaprogram@alxafrica.com",      # [REQUIRED]
+    MAIL_PASSWORD="foolpslxuilgvwfz",                  # [REQUIRED]
 )
 mail = Mail(app)
 
@@ -488,5 +488,6 @@ def disclaimer():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
