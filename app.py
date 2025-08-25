@@ -16,6 +16,7 @@ SECRET_KEY = "e8f3473b716cfe3760fd522e38a3bd5b9909510b0ef003f050e0a445fa3a6e83"
 AWS_ACCESS_KEY_ID = os.environ.get('WS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 AWS_DEFAULT_REGION = os.environ.get('AWS_DEFAULT_REGION')
+EMAIL_APP_PASSWORD = os.environ.get('APP_PASSWORD')
 
 app.secret_key = os.environ.get('SECRET_KEY', 'default_secret_key')  # [REQUIRED]
 
@@ -25,7 +26,7 @@ app.config.update(
     MAIL_PORT=587,
     MAIL_USE_TLS=True,
     MAIL_USERNAME="vaprogram@alxafrica.com",      # [REQUIRED]
-    MAIL_PASSWORD="foolpslxuilgvwfz",                  # [REQUIRED]
+    MAIL_PASSWORD=EMAIL_APP_PASSWORD,                  # [REQUIRED]
 )
 mail = Mail(app)
 
@@ -488,6 +489,7 @@ def disclaimer():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
