@@ -2,34 +2,34 @@ import os
 import uuid
 import io
 from datetime import datetime, timedelta, timezone
-from flask import Flask, request, jsonify, render_template, redirect, url_for, Response, flash
-from flask import current_app, session
+from flask import Flask, request, jsonify, render_template, redirect, url_for, Response, flash, session
 import pandas as pd
 import boto3
 from botocore.exceptions import ClientError
-from flask_mail import Mail, Message
 import math
+from googleapiclient.discovery import build
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+import base64
+from email.mime.text import MIMEText
+import logging
+
+# Allow HTTP for localhost during OAuth (for local testing)
+#os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
+# Configure logging
+logging.basicConfig(level=logging.ERROR)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
 # === ENVIRONMENT VARIABLES REQUIRED ===
 SECRET_KEY = "e8f3473b716cfe3760fd522e38a3bd5b9909510b0ef003f050e0a445fa3a6e83"
-AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')  # Fixed typo: 'WS_ACCESS_KEY_ID' to 'AWS_ACCESS_KEY_ID'
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 AWS_DEFAULT_REGION = os.environ.get('AWS_DEFAULT_REGION')
-EMAIL_APP_PASSWORD = os.environ.get('APP_PASSWORD')
-
 app.secret_key = os.environ.get('SECRET_KEY', 'default_secret_key')  # [REQUIRED]
-
-# Flask-Mail configuration
-app.config.update(
-    MAIL_SERVER='smtp.gmail.com',
-    MAIL_PORT=587,
-    MAIL_USE_TLS=True,
-    MAIL_USERNAME="vaprogram@alxafrica.com",  # [REQUIRED]
-    MAIL_PASSWORD=EMAIL_APP_PASSWORD,         # [REQUIRED]
-)
-mail = Mail(app)
 
 # AWS S3 configuration
 AWS_S3_BUCKET = "alx-peer-finder-storage-bucket"
@@ -37,9 +37,153 @@ if not AWS_S3_BUCKET:
     raise Exception("AWS_S3_BUCKET environment variable not set")
 
 s3 = boto3.client('s3')
-CSV_OBJECT_KEY = 'va_peer-matcing_data.csv'
+CSV_OBJECT_KEY = 'test_peer-matcing_data.csv'
 
 ADMIN_PASSWORD = "alx_admin_2025_peer_finder"
+
+# Gmail API configuration
+SCOPES = ['https://www.googleapis.com/auth/gmail.send']
+CREDENTIALS_FILE = 'client_secret_va.json'
+TOKEN_FILE = 'token.json'
+
+def get_gmail_service():
+    creds = None
+    # Load existing token if available
+    if os.path.exists(TOKEN_FILE):
+        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+    # If no valid credentials, authenticate
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            try:
+                creds.refresh(Request())
+            except Exception as e:
+                logger.error(f"Failed to refresh token: {str(e)}")
+                raise
+        else:
+            try:
+                flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
+                flow.redirect_uri = 'http://localhost:5000/oauth2callback'
+                creds = flow.run_local_server(port=5000, open_browser=True)
+                # Save credentials for reuse
+                with open(TOKEN_FILE, 'w') as token:
+                    token.write(creds.to_json())
+            except Exception as e:
+                logger.error(f"Failed to authenticate: {str(e)}")
+                raise
+    return build('gmail', 'v1', credentials=creds)
+
+def send_waiting_email(user_email, user_name, user_id):
+    confirm_link = url_for('check_match', _external=True)
+    body = f"""Hi {user_name},
+
+Waiting to Be Matched
+
+Your request is in the queue.
+As soon as a suitable peer or group is available, you'll be matched.
+Kindly copy your ID below to check your status later:
+
+Your ID: {user_id}
+Check your status here: {confirm_link}
+
+Best regards,
+Peer Finder Team
+"""
+    message = MIMEText(body)
+    message['to'] = user_email
+    message['from'] = 'vaprogram@alxafrica.com'
+    message['subject'] = 'PeerFinder - Waiting to Be Matched'
+    message['reply-to'] = 'vaprogram@alxafrica.com'
+    raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
+    try:
+        service = get_gmail_service()
+        service.users().messages().send(userId='me', body={'raw': raw}).execute()
+        logger.info(f"Sent waiting email to {user_email}")
+    except Exception as e:
+        logger.error(f"Failed to send email to {user_email}: {str(e)}")
+        raise
+
+def send_match_email(user_email, user_name, group_members):
+    peer_info_list = []
+    for m in group_members:
+        if m['email'] != user_email and m['email'] != 'unpaired':
+            support = m.get('kind_of_support', '')
+            if support == '' or (isinstance(support, float) and math.isnan(support)):
+                support = "Accountability"
+            support_info = f"\nSupport Type: {support}"
+            peer_info_list.append(f"Name: {m['name']}\nEmail Address: {m['email']}\nWhatsApp: {m['phone']}{support_info}")
+    peer_info = '\n\n'.join(peer_info_list)
+    if not peer_info:
+        peer_info = "No other members found."
+    body = f"""Hi {user_name},
+
+You have been matched with the following peer(s):
+
+{peer_info}
+
+Kindly reach out to your peer(s) for collaboration and support!👍
+
+⚠️ Please Read Carefully
+We want this to be a positive and supportive experience for everyone. To help make that happen:
+- Please show up for your partner or group — ghosting is discouraged and can affect their progress.
+- Only fill this form with accurate details. If you've entered incorrect information, kindly unpair yourself.
+- If you've completed all your modules, consider supporting others who are catching up — your help can make a real difference.🤗
+- If you no longer wish to participate, let your partner/group know first before unpairing.
+- If you'd like to be paired with someone new, you'll need to register again.
+
+Thank you for helping create a respectful and encouraging learning community.
+
+Best regards,
+Peer Finder Team
+"""
+    message = MIMEText(body)
+    message['to'] = user_email
+    message['from'] = 'vaprogram@alxafrica.com'
+    message['subject'] = "You've been matched!"
+    message['reply-to'] = 'vaprogram@alxafrica.com'
+    raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
+    try:
+        service = get_gmail_service()
+        service.users().messages().send(userId='me', body={'raw': raw}).execute()
+        logger.info(f"Sent match email to {user_email}")
+    except Exception as e:
+        logger.error(f"Failed to send email to {user_email}: {str(e)}")
+        raise
+
+# New route to initiate OAuth flow
+@app.route('/authorize')
+def authorize():
+    try:
+        flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
+        flow.redirect_uri = 'http://localhost:5000/oauth2callback'
+        authorization_url, state = flow.authorization_url(
+            access_type='offline',
+            include_granted_scopes='true',
+            prompt='consent'
+        )
+        session['state'] = state
+        return redirect(authorization_url)
+    except Exception as e:
+        logger.error(f"Failed to start OAuth flow: {str(e)}")
+        flash("Failed to start authorization. Please check logs.", "error")
+        return redirect(url_for('landing'))
+
+@app.route('/oauth2callback')
+def oauth2callback():
+    try:
+        state = session.get('state')
+        flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES, state=state)
+        flow.redirect_uri = 'https://alx-va-peerfinder.onrender.com/oauth2callback'
+        flow.fetch_token(authorization_response=request.url)
+        creds = flow.credentials
+        with open(TOKEN_FILE, 'w') as token:
+            token.write(creds.to_json())
+        logger.info("Successfully generated token.json")
+        flash("Authorization successful. Token generated.", "success")
+        return redirect(url_for('landing'))
+    except Exception as e:
+        logger.error(f"OAuth callback error: {str(e)}")
+        flash(f"Authorization failed: {str(e)}", "error")
+        return redirect(url_for('landing'))
 
 # === Helper Functions ===
 
@@ -550,5 +694,4 @@ def disclaimer():
     return render_template('disclaimer.html')
 
 if __name__ == '__main__':
-
-    app.run(debug=True)
+    app.run(debug=True, port=5000)
