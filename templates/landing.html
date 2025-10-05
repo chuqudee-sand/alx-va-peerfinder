@@ -294,7 +294,7 @@
         </div>
         <div class="hero-image-container">
             <iframe 
-                src="https://www.youtube.com/embed/QfHu33-2aR0" 
+                src="https://www.youtube.com/embed/X4k7SmbX5b8" 
                 title="YouTube video player" 
                 frameborder="0" 
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
@@ -315,12 +315,7 @@
     </div>
     </div> -->
 
-    <div class="connect-section">
-    <h2>Connect with a Support Star/Guided Star</h2>
-        <div class="connect-buttons">
-            <a href="{{ url_for('start_form', connection_type='find') }}">Find a Study Buddy/Accountability Partner/Group</a>
-
-            <a href="javascript:void(0);" class="offer-support disabled" title="Coming soon!">
+            <!--<a href="javascript:void(0);" class="offer-support disabled" title="Coming soon!">
             Offer Support to Someone ⭐⭐⭐
             <span class="tooltip">(Coming soon)</span>
             </a>
@@ -328,7 +323,18 @@
             <a href="javascript:void(0);" class="need-support disabled" title="Coming soon!">
             I need Support
             <span class="tooltip">(Coming soon)</span>
+            </a>-->
+
+    <div class="connect-section">
+    <h2>Connect with a Support Star/Guided Star</h2>
+        <div class="connect-buttons">
+            <a href="{{ url_for('start_form', connection_type='find') }}">Find a Study Buddy/Accountability Partner/Group</a>
+
+            <a href="{{ url_for('start_form', connection_type='offer') }}" class="offer-support">
+            Offer Support to Someone ⭐⭐⭐(Support Star)
             </a>
+
+            <a href="{{ url_for('start_form', connection_type='need') }}">I need Support (I am Behind / Struggling)</a>
         </div>
     </div>
 
@@ -343,5 +349,4 @@
         </div>
     </div>
 </body>
-
 </html>
