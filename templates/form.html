@@ -285,7 +285,8 @@
         <option value="Nigeria">Nigeria</option>
         <option value="Rwanda">Rwanda</option>
         <option value="South Africa">South Africa</option>
-        <option value="Other">Other</option>
+        <option value="Other (African Country)">Other (African Country)</option>
+        <option value="Other (Non-African Country)">Other (Non-African Country)</option>
       </select>
 
       <label for="language">Preferred Language:</label>
@@ -300,7 +301,7 @@
       <label for="cohort">Cohort:</label>
       <select id="cohort" name="cohort" required>
         <option value="">--Select--</option>
-        {% for i in range(12, 14) %}
+        {% for i in range(12, 13) %}
           <option value="Cohort {{ i }}">Cohort {{ i }}</option>
         {% endfor %}
       </select>
@@ -408,7 +409,4 @@
     });
   </script>
 </body>
-
 </html> 
-
-
