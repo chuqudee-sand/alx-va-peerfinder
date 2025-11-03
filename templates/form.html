@@ -355,7 +355,7 @@
           <option value="">--Select--</option>
           <option value="2">A Study Buddy (Peer)</option>
           <option value="3">A Group of 3</option>
-          <option value="5">A Group of 5</option>
+          <!-- <option value="5">A Group of 5</option> -->
         </select>
       {% elif connection_type in ['offer', 'need'] %}
         <label for="kind_of_support">Kind of Support {{ "to provide" if connection_type == "offer" else "you need" }}:</label>
@@ -410,5 +410,6 @@
 </body>
 
 </html> 
+
 
 
