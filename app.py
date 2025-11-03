@@ -447,8 +447,7 @@ def match_users():
             return jsonify({'error': 'Unsupported group size', 'redirect': url_for('waiting', user_id=user_id)}), 400
         eligible = df[
             (df['matched'] == False) &
-            (df['connection_type'] == 'find') &
-            (df['country'] == country) &
+            (df['connection_type'] == 'find') & #(df['country'] == country) &
             (df['cohort'] == cohort) &
             (df['topic_module'] == topic_module) &
             (df['preferred_study_setup'] == preferred_study_setup)
@@ -473,8 +472,7 @@ def match_users():
         opposite_type = 'need' if user['connection_type'] == 'offer' else 'offer'
         eligible = df[
             (df['matched'] == False) &
-            (df['connection_type'] == opposite_type) &
-            (df['country'] == country) &
+            (df['connection_type'] == opposite_type) & #(df['country'] == country) &
             (df['cohort'] == cohort)
         ]
         eligible = eligible[eligible['availability'].apply(lambda x: availability_match(x, availability))]
@@ -631,5 +629,6 @@ def disclaimer():
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
+
 
 
